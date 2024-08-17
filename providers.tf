@@ -1,4 +1,3 @@
-
 terraform {
   required_providers {
     google = {
@@ -6,19 +5,26 @@ terraform {
       version = "~> 4.0"
     }
   }
-#   backend "gcs" {
-#     bucket = "remote-backend-state"
-#     prefix = "terraform/state"
-#   }
+  backend "gcs" {
+    bucket = "remote-backend-state"
+    prefix = "terraform/state"
+  }
 }
 
+data "terraform_remote_state" "common_vars" {
+  backend = "local"
+
+  config = {
+    path = "Backend/terraform.tfstate"
+  }
+}
 provider "google" {
-  project = var.project_id
-  region  = var.region
+  project = data.terraform_remote_state.common_vars.outputs.project_id
+  region  = data.terraform_remote_state.common_vars.outputs.region
 #   access_token = var.auth_token
 }
 
 provider "kubernetes" {
   config_path    = "~/.kube/config"
-  config_context = "gke_${var.project_id}_${var.region}_cluster"
+  config_context = "gke_${data.terraform_remote_state.common_vars.outputs.project_id}_${data.terraform_remote_state.common_vars.outputs.region}_cluster"
 }

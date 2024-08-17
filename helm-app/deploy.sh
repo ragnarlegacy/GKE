@@ -1,0 +1,1 @@
+helm install amd-api helm-app

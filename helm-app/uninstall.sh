@@ -1,0 +1,1 @@
+helm uninstall amd-api ./helm-app
