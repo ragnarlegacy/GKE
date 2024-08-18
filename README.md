@@ -238,3 +238,160 @@ Click Load, select Prometheus as the data source, and click Import.
 #### Visualize Your Cluster:
 
 Now you can see various metrics related to your GKE cluster, such as node resource usage, pod status, and more.
+
+# Production-ready Ethereum cluster on Kubernetes using Helm:
+1.  Switch to directory ethereum.
+```sh
+cd ethereum
+```
+2. Generating a usable Ethereum wallet and its corresponding keys:
+```sh
+# Generate the private and public keys
+> openssl ecparam -name secp256k1 -genkey -noout | 
+  openssl ec -text -noout > Key
+
+# Extract the public key and remove the EC prefix 0x04
+> cat Key | grep pub -A 5 | tail -n +2 |
+            tr -d '\n[:space:]:' | sed 's/^04//' > pub
+
+# Extract the private key and remove the leading zero byte
+> cat Key | grep priv -A 3 | tail -n +2 | 
+            tr -d '\n[:space:]:' | sed 's/^00//' > priv
+
+# Generate the hash and take the address part
+> cat pub | keccak-256sum -x -l | tr -d ' -' | tail -c 41 > address
+
+# (Optional) import the private key to geth
+> geth account import priv
+```
+
+3. Customize 'values.yaml' file:
+```sh
+# Default values for ethereum.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+imagePullPolicy: IfNotPresent
+
+# Node labels for pod assignment
+# ref: https://kubernetes.io/docs/user-guide/node-selection/
+nodeSelector: {}
+
+bootnode:
+  image:
+    repository: ethereum/client-go
+    tag: alltools-v1.7.3
+
+ethstats:
+  image:
+    repository: ethereumex/eth-stats-dashboard
+    tag: v0.0.1
+  webSocketSecret: my-secret-for-connecting-to-ethstats
+  service:
+    type: LoadBalancer
+
+geth:
+  image:
+    repository: ethereum/client-go
+    tag: v1.7.3
+  tx:
+    # transaction nodes
+    replicaCount: 2
+    service:
+      type: LoadBalancer
+    args:
+      rpcapi: 'eth,net,web3'
+  miner:
+    # miner nodes
+    replicaCount: 3
+  genesis:
+    # geth genesis block
+    difficulty: '0x0400'
+    gasLimit: '0x8000000'
+    networkId: 98052
+  account:
+    # You will need to configure an Ethereum account before this
+    # network will run. The Ethereum account will be used to seed
+    # Ether and mined Ether will be deposited into this account.
+    # ref: https://github.com/ethereum/go-ethereum/wiki/Managing-your-accounts
+    address: <Generated_Account_Address>
+    privateKey: <Generated_Private_Key>
+    secret: <Secret_to_Secure_Private_Key>
+```
+
+4. Install the chart as follows:
+```sh
+helm install ethereum ./ethereum
+```
+
+5. Verify the cluster by checking the pods and services:
+```sh
+kubectl get pods
+kubectl get svc
+```
+
+6. Visit the Dashboard:
+```sh
+1. View the EthStats dashboard at:
+    export SERVICE_IP=$(kubectl get svc --namespace default ethereum-cluster-ethstats -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo http://$SERVICE_IP
+
+    NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+          You can watch the status of by running 'kubectl get svc -w ethereum-cluster-ethstats-service'
+
+  2. Connect to Geth transaction nodes (through RPC or WS) at the following IP:
+    export SERVICE_IP=$(kubectl get svc --namespace default ethereum-cluster-geth-tx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo $SERVICE_IP
+
+    NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+          You can watch the status of by running 'kubectl get svc -w ethereum-cluster-geth-tx'
+
+```
+
+7. Test the connection to the Ethereum node:
+```sh
+curl -X POST -H "Content-Type: application/json" \
+--data '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":1}' \
+http://<EXTERNAL_IP>:8545
+```
+Expected Output:
+```sh
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": "Geth/v1.10.13-stable/linux-amd64/go1.16.5"
+}
+```
+
+8. Check the block number:
+```sh
+curl -X POST -H "Content-Type: application/json" \
+--data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+http://<EXTERNAL_IP>:8545
+```
+Expected Output:
+```sh
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": "0x10d4f"  // Example block number in hex
+}
+
+```
+
+9. Check the synchronization status of the nodes with the Ethereum network:
+```sh
+curl -X POST -H "Content-Type: application/json" \
+--data '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
+http://<EXTERNAL_IP>:8545
+```
+Expected Output:
+```sh
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": false
+}
+```
+
+Thank you :)
