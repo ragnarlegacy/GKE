@@ -33,6 +33,18 @@ Either, you can login to GCP console and create manually or follow the below giv
 git clone https://github.com/ragnarlegacy/GKE.git
 cd GKE/Backend
 ```
+Customize:
+Backend/terraform.tfvars:
+```sh
+bucket_name = "your_bucket_name"
+project_id = "your_project_id"
+region     = "your_region"
+```
+global.auto.tfvars:
+```sh
+# terraform.tfvars
+cluster_name = "vyour_cluster_name"
+```
 2. Initialize Terraform:
 ```sh
 terraform init
