@@ -43,7 +43,7 @@ region     = "your_region"
 global.auto.tfvars:
 ```sh
 # terraform.tfvars
-cluster_name = "vyour_cluster_name"
+cluster_name = "your_cluster_name"
 ```
 2. Initialize Terraform:
 ```sh
@@ -51,12 +51,12 @@ terraform init
 ```
 3. Plan the Terraform Configuration
 ```sh
-terraform plan --auto-approve
+terraform plan -auto-approve
 ```
 
 4. Apply the Terraform configuration:
 ```sh
-terraform apply --auto-approve
+terraform apply -auto-approve
 ```
 
 ### 3. Deploy GKE Cluster using Terraform
@@ -64,8 +64,8 @@ terraform apply --auto-approve
 ```sh
 cd ../GKE
 terraform init
-terraform plan --auto-approve
-terraform apply --auto-approve
+terraform plan -auto-approve
+terraform apply -auto-approve
 ```
 2. Interact with the GKE Cluster:
    
